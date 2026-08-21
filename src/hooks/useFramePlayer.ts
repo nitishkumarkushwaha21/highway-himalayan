@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { clamp } from "@/lib/animation";
 
 interface FramePlayerOptions {
@@ -8,6 +8,24 @@ interface FramePlayerOptions {
   progress: number;
   width?: number;
   height?: number;
+  /** Skip preloading entirely — used for reduced-motion / mobile fallbacks. */
+  disabled?: boolean;
+}
+
+const KEYFRAME_STEP = 10;
+const BATCH_SIZE = 4;
+
+function buildLoadOrder(count: number): number[] {
+  const seen = new Uint8Array(count);
+  const order: number[] = [];
+  for (let i = 0; i < count; i += KEYFRAME_STEP) {
+    order.push(i);
+    seen[i] = 1;
+  }
+  for (let i = 0; i < count; i++) {
+    if (!seen[i]) order.push(i);
+  }
+  return order;
 }
 
 export function useFramePlayer({
@@ -16,105 +34,93 @@ export function useFramePlayer({
   progress,
   width = 1920,
   height = 1080,
+  disabled = false,
 }: FramePlayerOptions) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imagesRef = useRef<(HTMLImageElement | null)[]>([]);
   const loadedRef = useRef<Set<number>>(new Set());
-  const currentFrameRef = useRef(0);
+  const lastDrawnRef = useRef<number>(-1);
 
-  // Preload frames
   useEffect(() => {
+    if (disabled) return;
     const images: (HTMLImageElement | null)[] = new Array(frameCount).fill(null);
     imagesRef.current = images;
+    loadedRef.current = new Set();
+    lastDrawnRef.current = -1;
 
-    // Load frames in priority order: first, last, then fill in
-    const loadOrder: number[] = [];
-
-    // First 10 frames
-    for (let i = 0; i < Math.min(10, frameCount); i++) loadOrder.push(i);
-    // Last 10
-    for (let i = Math.max(10, frameCount - 10); i < frameCount; i++) loadOrder.push(i);
-    // Middle keyframes every 10th
-    for (let i = 10; i < frameCount - 10; i += 10) loadOrder.push(i);
-    // Fill remaining
-    for (let i = 0; i < frameCount; i++) {
-      if (!loadOrder.includes(i)) loadOrder.push(i);
-    }
-
+    const order = buildLoadOrder(frameCount);
     let cancelled = false;
+    let cursor = 0;
 
-    const loadFrame = (index: number): Promise<void> => {
-      return new Promise((resolve) => {
-        if (cancelled || loadedRef.current.has(index)) {
-          resolve();
-          return;
-        }
-        const img = new Image();
-        const padded = String(index + 1).padStart(4, "0");
-        img.src = `${framePath}${padded}.webp`;
-        img.onload = () => {
-          if (!cancelled) {
-            images[index] = img;
-            loadedRef.current.add(index);
-          }
-          resolve();
-        };
-        img.onerror = () => resolve();
+    const loadNext = () => {
+      if (cancelled || cursor >= order.length) return;
+      const batch = order.slice(cursor, cursor + BATCH_SIZE);
+      cursor += BATCH_SIZE;
+
+      Promise.all(
+        batch.map(
+          (idx) =>
+            new Promise<void>((resolve) => {
+              const img = new Image();
+              img.decoding = "async";
+              img.src = `${framePath}${String(idx + 1).padStart(4, "0")}.webp`;
+              img.onload = () => {
+                if (!cancelled) {
+                  images[idx] = img;
+                  loadedRef.current.add(idx);
+                }
+                resolve();
+              };
+              img.onerror = () => resolve();
+            }),
+        ),
+      ).then(() => {
+        if (!cancelled) requestAnimationFrame(loadNext);
       });
     };
 
-    // Load in batches of 6
-    const loadBatch = async (startIdx: number) => {
-      const batch = loadOrder.slice(startIdx, startIdx + 6);
-      if (batch.length === 0 || cancelled) return;
-      await Promise.all(batch.map(loadFrame));
-      if (!cancelled) {
-        requestAnimationFrame(() => loadBatch(startIdx + 6));
-      }
-    };
-
-    loadBatch(0);
-
+    loadNext();
     return () => {
       cancelled = true;
     };
-  }, [framePath, frameCount]);
+  }, [framePath, frameCount, disabled]);
 
-  // Draw current frame
   useEffect(() => {
+    if (disabled) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const frameIndex = Math.round(clamp(progress) * (frameCount - 1));
-    currentFrameRef.current = frameIndex;
+    const target = Math.round(clamp(progress) * (frameCount - 1));
 
-    // Find the closest loaded frame
-    let bestFrame = frameIndex;
-    if (!loadedRef.current.has(frameIndex)) {
-      // Search nearby
+    let best = target;
+    if (!loadedRef.current.has(target)) {
+      if (lastDrawnRef.current >= 0) {
+        best = lastDrawnRef.current;
+      }
       for (let offset = 1; offset < frameCount; offset++) {
-        if (loadedRef.current.has(frameIndex - offset)) {
-          bestFrame = frameIndex - offset;
+        if (loadedRef.current.has(target - offset)) {
+          best = target - offset;
           break;
         }
-        if (loadedRef.current.has(frameIndex + offset)) {
-          bestFrame = frameIndex + offset;
+        if (loadedRef.current.has(target + offset)) {
+          best = target + offset;
           break;
         }
       }
     }
 
-    const img = imagesRef.current[bestFrame];
-    if (img) {
-      canvas.width = width;
-      canvas.height = height;
-      ctx.clearRect(0, 0, width, height);
-      ctx.drawImage(img, 0, 0, width, height);
-    }
-  }, [progress, frameCount, width, height]);
+    const img = imagesRef.current[best];
+    if (!img) return;
+
+    if (canvas.width !== width) canvas.width = width;
+    if (canvas.height !== height) canvas.height = height;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(img, 0, 0, width, height);
+    lastDrawnRef.current = best;
+  }, [progress, frameCount, width, height, disabled]);
 
   return { canvasRef };
 }

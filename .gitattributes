@@ -1,0 +1,7 @@
+# Treat frame sequences and other media as binary — no diffing / merge noise.
+*.webp binary
+*.png binary
+*.jpg binary
+*.mp4 binary
+*.mov binary
+*.woff2 binary

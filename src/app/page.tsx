@@ -9,8 +9,9 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Preloader from "@/components/Preloader";
 import ProgressIndicator from "@/components/ProgressIndicator";
-import CustomCursor from "@/components/CustomCursor";
+import SoundToggle from "@/components/SoundToggle";
 import { FrameLoadingProvider } from "@/hooks/useFrameLoading";
+import { AudioProvider } from "@/hooks/useAudio";
 import { destinations } from "@/lib/destinations";
 
 const mapLabels = [
@@ -23,9 +24,10 @@ const mapLabels = [
 export default function Home() {
   return (
     <FrameLoadingProvider>
+      <AudioProvider>
       <Preloader />
-      <CustomCursor />
       <ProgressIndicator />
+      <SoundToggle />
 
       <main className="site-shell">
         <Navbar />
@@ -33,26 +35,15 @@ export default function Home() {
 
         {destinations.map((dest, i) => (
           <div key={dest.id}>
-            {/* Transition into map */}
             <SectionTransition
-              label={`${mapLabels[i].from} → ${mapLabels[i].to}`}
+              label={`${mapLabels[i].from} → ${mapLabels[i].to} · Arriving at ${dest.title}`}
               color={dest.color}
             />
-
-            {/* Map segment */}
             <MapSection
               segmentIndex={i}
               fromLabel={mapLabels[i].from}
               toLabel={mapLabels[i].to}
             />
-
-            {/* Transition into destination */}
-            <SectionTransition
-              label={`Arriving at ${dest.title}`}
-              color={dest.color}
-            />
-
-            {/* Destination cinematic scene */}
             <DestinationScene destination={dest} index={i} />
           </div>
         ))}
@@ -63,6 +54,7 @@ export default function Home() {
         <PackageCTA />
         <Footer />
       </main>
+      </AudioProvider>
     </FrameLoadingProvider>
   );
 }

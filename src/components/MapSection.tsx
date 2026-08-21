@@ -2,6 +2,7 @@
 import { useRef, useEffect, useState } from "react";
 import { clamp, smoothstep } from "@/lib/animation";
 import MapJourney from "./MapJourney";
+import { useAudio } from "@/hooks/useAudio";
 
 interface MapSectionProps {
   segmentIndex: number;
@@ -16,6 +17,8 @@ export default function MapSection({
 }: MapSectionProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const [progress, setProgress] = useState(0);
+  const { chime } = useAudio();
+  const chimedRef = useRef(false);
 
   useEffect(() => {
     const onScroll = () => {
@@ -31,6 +34,17 @@ export default function MapSection({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Gentle chime when the bus arrives at the pin; re-arm on the way out.
+  useEffect(() => {
+    if (progress > 0.9 && !chimedRef.current) {
+      chimedRef.current = true;
+      // higher pitch for later (higher-altitude) stops
+      chime(560 + segmentIndex * 60);
+    } else if (progress < 0.7) {
+      chimedRef.current = false;
+    }
+  }, [progress, chime, segmentIndex]);
+
   const labelEnter = smoothstep(0.05, 0.25, progress);
   const labelExit = smoothstep(0.75, 0.95, progress);
   const labelOpacity = labelEnter * (1 - labelExit);
@@ -40,7 +54,7 @@ export default function MapSection({
       ref={sectionRef}
       className="map-section"
       aria-label={`${fromLabel} to ${toLabel} map segment`}
-      style={{ height: "calc(100vh + 600px)" }}
+      style={{ height: "calc(100vh + 300px)" }}
     >
       <div className="map-section__stage">
         <MapJourney

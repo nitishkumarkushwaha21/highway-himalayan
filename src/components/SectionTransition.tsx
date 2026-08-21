@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useEffect, useState } from "react";
 import { clamp, smoothstep } from "@/lib/animation";
+import { useAudio } from "@/hooks/useAudio";
 
 interface SectionTransitionProps {
   /** Label to display during transition */
@@ -17,6 +18,8 @@ export default function SectionTransition({
 }: SectionTransitionProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [scroll, setScroll] = useState(0);
+  const { whoosh } = useAudio();
+  const playedRef = useRef(false);
 
   useEffect(() => {
     const onScroll = () => {
@@ -30,15 +33,27 @@ export default function SectionTransition({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const fadeIn = smoothstep(0, 0.3, scroll);
-  const fadeOut = smoothstep(0.7, 1, scroll);
+  // Wider hold: the label lingers across most of the transition instead of
+  // flashing in and out — stillness reads more premium than motion.
+  const fadeIn = smoothstep(0.04, 0.24, scroll);
+  const fadeOut = smoothstep(0.82, 1, scroll);
   const opacity = fadeIn * (1 - fadeOut);
+
+  // Soft whoosh once as the transition sweeps into view; re-arm after it leaves.
+  useEffect(() => {
+    if (scroll > 0.12 && scroll < 0.6 && !playedRef.current) {
+      playedRef.current = true;
+      whoosh();
+    } else if (scroll <= 0.05 || scroll >= 0.95) {
+      playedRef.current = false;
+    }
+  }, [scroll, whoosh]);
 
   return (
     <div
       ref={ref}
       className="section-transition"
-      style={{ height: "50vh" }}
+      style={{ height: "42vh" }}
     >
       <div className="section-transition__stage">
         {/* Top gradient from previous section */}

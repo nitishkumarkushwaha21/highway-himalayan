@@ -1,7 +1,9 @@
 "use client";
-import { useRef, useEffect, useState, useMemo } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useParallax } from "@/hooks/useParallax";
-import { clamp, smoothstep, lerp } from "@/lib/animation";
+import { useFramePlayer } from "@/hooks/useFramePlayer";
+import { useMotionSettings } from "@/hooks/useMotionSettings";
+import { clamp, smoothstep, holdMap } from "@/lib/animation";
 import type { Destination } from "@/lib/destinations";
 
 interface DestinationSceneProps {
@@ -14,13 +16,11 @@ export default function DestinationScene({
   index,
 }: DestinationSceneProps) {
   const sectionRef = useRef<HTMLElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imagesRef = useRef<(HTMLImageElement | null)[]>([]);
-  const loadedSetRef = useRef<Set<number>>(new Set());
   const mouse = useParallax();
   const [scroll, setScroll] = useState(0);
+  const { reducedMotion, isMobile } = useMotionSettings();
+  const disableFrames = reducedMotion || isMobile;
 
-  // Scroll tracking
   useEffect(() => {
     const onScroll = () => {
       const section = sectionRef.current;
@@ -34,106 +34,44 @@ export default function DestinationScene({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Frame preloading
-  useEffect(() => {
-    const count = destination.frameCount;
-    const images: (HTMLImageElement | null)[] = new Array(count).fill(null);
-    imagesRef.current = images;
-    let cancelled = false;
+  // Reveal to the clip's sharpest "arrival" frame, hold there through the
+  // reading beat (blurry middle frames only flash past during motion), then
+  // finish the fly-through on exit.
+  const frameProgress = holdMap(scroll, destination.holdFrac, 380, 1080, 1460);
+  const { canvasRef } = useFramePlayer({
+    framePath: destination.framePath,
+    frameCount: destination.frameCount,
+    progress: frameProgress,
+    disabled: disableFrames,
+  });
 
-    // Priority load order: every 10th first, then fill
-    const order: number[] = [];
-    for (let i = 0; i < count; i += 10) order.push(i);
-    for (let i = 0; i < count; i++) {
-      if (!order.includes(i)) order.push(i);
-    }
+  // Text beats: gentle, well-separated windows so nothing flashes past.
+  const titleEnter = smoothstep(150, 480, scroll);
+  const titleExit = smoothstep(720, 980, scroll);
+  const factsEnter = smoothstep(820, 1080, scroll);
+  const factsExit = smoothstep(1240, 1440, scroll);
+  const tagsEnter = smoothstep(980, 1200, scroll);
+  const tagsExit = smoothstep(1300, 1480, scroll);
+  const sceneExit = smoothstep(1320, 1500, scroll);
 
-    const loadBatch = async (startIdx: number) => {
-      if (cancelled) return;
-      const batch = order.slice(startIdx, startIdx + 4);
-      if (batch.length === 0) return;
-
-      await Promise.all(
-        batch.map(
-          (frameIdx) =>
-            new Promise<void>((resolve) => {
-              if (loadedSetRef.current.has(frameIdx)) { resolve(); return; }
-              const img = new Image();
-              const padded = String(frameIdx + 1).padStart(4, "0");
-              img.src = `${destination.framePath}${padded}.webp`;
-              img.onload = () => {
-                if (!cancelled) {
-                  images[frameIdx] = img;
-                  loadedSetRef.current.add(frameIdx);
-                }
-                resolve();
-              };
-              img.onerror = () => resolve();
-            })
-        )
-      );
-      if (!cancelled) requestAnimationFrame(() => loadBatch(startIdx + 4));
-    };
-
-    loadBatch(0);
-    return () => { cancelled = true; };
-  }, [destination.framePath, destination.frameCount]);
-
-  // Draw frame on canvas
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const frameProgress = smoothstep(0, 900, scroll);
-    const frameIndex = Math.round(clamp(frameProgress) * (destination.frameCount - 1));
-
-    // Find closest loaded frame
-    let best = frameIndex;
-    if (!loadedSetRef.current.has(frameIndex)) {
-      for (let offset = 1; offset < destination.frameCount; offset++) {
-        if (loadedSetRef.current.has(frameIndex - offset)) { best = frameIndex - offset; break; }
-        if (loadedSetRef.current.has(frameIndex + offset)) { best = frameIndex + offset; break; }
-      }
-    }
-
-    const img = imagesRef.current[best];
-    if (img) {
-      canvas.width = 1920;
-      canvas.height = 1080;
-      ctx.clearRect(0, 0, 1920, 1080);
-      ctx.drawImage(img, 0, 0, 1920, 1080);
-    }
-  }, [scroll, destination.frameCount]);
-
-  // Animation segments
-  const frameProgress = smoothstep(0, 900, scroll);
-  const titleEnter = smoothstep(50, 350, scroll);
-  const titleHold = smoothstep(350, 500, scroll);
-  const titleExit = smoothstep(500, 720, scroll);
-  const factsEnter = smoothstep(420, 680, scroll);
-  const factsExit = smoothstep(780, 980, scroll);
-  const tagsEnter = smoothstep(600, 800, scroll);
-  const tagsExit = smoothstep(900, 1100, scroll);
-  const sceneExit = smoothstep(1000, 1200, scroll);
-
-  // Parallax
-  const bgY = mouse.y * -8;
-  const bgX = mouse.x * -12;
-  const fgX = mouse.x * 15;
-  const fgY = mouse.y * 10;
+  const parallaxScale = reducedMotion ? 0 : 1;
+  const bgY = mouse.y * -8 * parallaxScale;
+  const bgX = mouse.x * -12 * parallaxScale;
+  const fgX = mouse.x * 15 * parallaxScale;
+  const fgY = mouse.y * 10 * parallaxScale;
 
   const titleActive = titleEnter * (1 - titleExit);
   const factsActive = factsEnter * (1 - factsExit);
   const tagsActive = tagsEnter * (1 - tagsExit);
 
+  // Shimla and Manali already have busy, cloud-heavy frames — the extra mist
+  // overlay made them look overcrowded, so it's dropped for those two.
   const midLayerSrc =
     destination.id === "spiti"
       ? "/images/spiti-dust.png"
       : destination.id === "ladakh"
         ? "/images/ladakh-water.png"
-        : `/images/${destination.id}-mist.png`;
+        : null;
 
   return (
     <section
@@ -141,7 +79,7 @@ export default function DestinationScene({
       id={destination.id}
       className="dest-scene"
       aria-label={`${destination.title} destination`}
-      style={{ height: "calc(100vh + 1200px)" }}
+      style={{ height: "calc(100vh + 1500px)" }}
     >
       <div className="dest-scene__stage">
         <img
@@ -153,27 +91,30 @@ export default function DestinationScene({
           }}
         />
 
-        {/* Frame canvas */}
-        <canvas
-          ref={canvasRef}
-          className="dest-scene__canvas"
-          width={1920}
-          height={1080}
-          style={{
-            opacity: clamp(frameProgress * 1.8),
-            transform: `translate3d(${mouse.x * 6}px, ${mouse.y * 4}px, 0) scale(${1.02 + frameProgress * 0.06})`,
-          }}
-        />
+        {!disableFrames && (
+          <canvas
+            ref={canvasRef}
+            className="dest-scene__canvas"
+            width={1920}
+            height={1080}
+            style={{
+              opacity: clamp(frameProgress * 1.8),
+              transform: `translate3d(${mouse.x * 6 * parallaxScale}px, ${mouse.y * 4 * parallaxScale}px, 0) scale(${1.02 + frameProgress * 0.06})`,
+            }}
+          />
+        )}
 
-        <img
-          src={midLayerSrc}
-          className="dest-scene__mid-img"
-          alt=""
-          style={{
-            opacity: 0.3 + frameProgress * 0.3,
-            transform: `translate3d(${mouse.x * 6}px, ${-frameProgress * 30}px, 0)`,
-          }}
-        />
+        {midLayerSrc && (
+          <img
+            src={midLayerSrc}
+            className="dest-scene__mid-img"
+            alt=""
+            style={{
+              opacity: 0.3 + frameProgress * 0.3,
+              transform: `translate3d(${mouse.x * 6 * parallaxScale}px, ${-frameProgress * 30}px, 0)`,
+            }}
+          />
+        )}
 
         <img
           src={`/images/${destination.id}-fg.png`}
@@ -185,7 +126,6 @@ export default function DestinationScene({
           }}
         />
 
-        {/* Color tint overlay */}
         <div
           className="dest-scene__tint"
           style={{
@@ -194,10 +134,8 @@ export default function DestinationScene({
           }}
         />
 
-        {/* Vignette */}
         <div className="dest-scene__vignette" />
 
-        {/* ──── Title Panel ──── */}
         <div
           className="dest-scene__panel dest-scene__title-panel"
           style={{
@@ -210,7 +148,6 @@ export default function DestinationScene({
           <p className="dest-scene__subtitle">{destination.subtitle}</p>
         </div>
 
-        {/* ──── Body + Facts Panel ──── */}
         <div
           className="dest-scene__panel dest-scene__facts-panel"
           style={{
@@ -229,7 +166,6 @@ export default function DestinationScene({
           </dl>
         </div>
 
-        {/* ──── Tags ──── */}
         <div
           className="dest-scene__tags"
           style={{
@@ -252,7 +188,6 @@ export default function DestinationScene({
           ))}
         </div>
 
-        {/* Destination number */}
         <div className="dest-scene__index" style={{ color: destination.color }}>
           <span className="dest-scene__index-num">
             {String(index + 1).padStart(2, "0")}

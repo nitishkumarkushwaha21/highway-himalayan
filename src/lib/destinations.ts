@@ -10,6 +10,14 @@ export interface Destination {
   accentGradient: string;
   frameCount: number;
   framePath: string;
+  /**
+   * 0-1 position of the sharpest "arrival" frame in the clip. The scrubber
+   * holds here during the text-reading beat so the frame people actually
+   * stare at is always clean — the blurrier middle frames only flash past
+   * during motion, where blur is far less noticeable. Auto-picked via
+   * ffmpeg blurdetect over the 30–85% reveal window.
+   */
+  holdFrac: number;
 }
 
 export const destinations: Destination[] = [
@@ -29,6 +37,7 @@ export const destinations: Destination[] = [
     accentGradient: "linear-gradient(135deg, #d4a574 0%, #8b6914 100%)",
     frameCount: 240,
     framePath: "/frames/shimla/frame_",
+    holdFrac: 0.385,
   },
   {
     id: "manali",
@@ -46,6 +55,7 @@ export const destinations: Destination[] = [
     accentGradient: "linear-gradient(135deg, #a8d5e2 0%, #4a90a4 100%)",
     frameCount: 240,
     framePath: "/frames/manali/frame_",
+    holdFrac: 0.418,
   },
   {
     id: "spiti",
@@ -63,6 +73,7 @@ export const destinations: Destination[] = [
     accentGradient: "linear-gradient(135deg, #b8a089 0%, #6b5a47 100%)",
     frameCount: 240,
     framePath: "/frames/spiti/frame_",
+    holdFrac: 0.351,
   },
   {
     id: "ladakh",
@@ -80,6 +91,7 @@ export const destinations: Destination[] = [
     accentGradient: "linear-gradient(135deg, #2e5c8a 0%, #0077b6 100%)",
     frameCount: 240,
     framePath: "/frames/ladakh/frame_",
+    holdFrac: 0.787,
   },
 ];
 
