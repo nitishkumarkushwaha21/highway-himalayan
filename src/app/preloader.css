@@ -1,0 +1,317 @@
+/* ============================================
+   PRELOADER
+   ============================================ */
+.preloader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #141210;
+  overflow: hidden;
+}
+
+/* ---- Particles ---- */
+.preloader__particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.preloader__particle {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(212, 165, 116, 0.6) 0%, transparent 70%);
+  animation: particleFloat linear infinite;
+}
+
+@keyframes particleFloat {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-120px) scale(0.3);
+    opacity: 0;
+  }
+}
+
+/* ---- Center content ---- */
+.preloader__content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 48px;
+  width: min(520px, calc(100vw - 48px));
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.preloader--revealed .preloader__content {
+  opacity: 0;
+  transform: scale(0.96);
+}
+
+/* ---- Brand ---- */
+.preloader__brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.preloader__brand-name {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 500;
+  color: #f5ead6;
+  letter-spacing: 0.02em;
+  animation: brandFadeIn 1.2s ease-out both;
+}
+
+.preloader__brand-line {
+  display: block;
+  width: 48px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(212, 165, 116, 0.5),
+    transparent
+  );
+  animation: brandFadeIn 1.2s ease-out 0.2s both;
+}
+
+.preloader__brand-tagline {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(245, 234, 214, 0.4);
+  animation: brandFadeIn 1.2s ease-out 0.4s both;
+}
+
+@keyframes brandFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---- Route visualization ---- */
+.preloader__route {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  animation: brandFadeIn 1s ease-out 0.6s both;
+}
+
+.preloader__route-stop {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.preloader__route-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(245, 234, 214, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.5s ease, background 0.5s ease;
+}
+
+.preloader__route-dot--active {
+  border-color: rgba(212, 165, 116, 0.6);
+  box-shadow: 0 0 16px rgba(212, 165, 116, 0.15);
+  animation: dotPulse 1.8s ease-in-out infinite;
+}
+
+.preloader__route-dot--done {
+  border-color: rgba(212, 165, 116, 0.5);
+  background: rgba(212, 165, 116, 0.15);
+}
+
+.preloader__check {
+  color: #d4a574;
+}
+
+@keyframes dotPulse {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(212, 165, 116, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(212, 165, 116, 0.25);
+  }
+}
+
+.preloader__route-name {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(245, 234, 214, 0.45);
+  white-space: nowrap;
+}
+
+.preloader__route-line {
+  width: 28px;
+  height: 2px;
+  margin: 0 8px;
+  background: rgba(245, 234, 214, 0.08);
+  border-radius: 1px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.preloader__route-line-fill {
+  height: 100%;
+  background: rgba(212, 165, 116, 0.4);
+  border-radius: 1px;
+  transition: width 0.4s ease;
+}
+
+/* ---- Progress bar ---- */
+.preloader__progress {
+  width: 100%;
+  animation: brandFadeIn 1s ease-out 0.8s both;
+}
+
+.preloader__bar {
+  position: relative;
+  width: 100%;
+  height: 3px;
+  background: rgba(245, 234, 214, 0.06);
+  border-radius: 2px;
+  overflow: visible;
+}
+
+.preloader__bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6b5a47, #d4a574);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.preloader__bar-glow {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d4a574;
+  box-shadow: 0 0 14px 4px rgba(212, 165, 116, 0.3);
+  transition: left 0.3s ease;
+}
+
+.preloader__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.preloader__status {
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(245, 234, 214, 0.35);
+  transition: opacity 0.3s ease;
+  min-height: 1.4em;
+}
+
+.preloader__pct {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: rgba(245, 234, 214, 0.5);
+  tabular-nums: true;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Curtain reveal ---- */
+.preloader__curtain {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 51%;
+  background: #141210;
+  z-index: 3;
+  transition: transform 0.9s cubic-bezier(0.76, 0, 0.24, 1);
+  will-change: transform;
+}
+
+.preloader__curtain--left {
+  left: 0;
+  transform-origin: left center;
+}
+
+.preloader__curtain--right {
+  right: 0;
+  transform-origin: right center;
+}
+
+.preloader--revealed .preloader__curtain--left {
+  transform: translateX(-105%);
+}
+
+.preloader--revealed .preloader__curtain--right {
+  transform: translateX(105%);
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 640px) {
+  .preloader__route-name {
+    display: none;
+  }
+
+  .preloader__route-line {
+    width: 20px;
+    margin: 0 6px;
+  }
+
+  .preloader__route-dot {
+    width: 24px;
+    height: 24px;
+  }
+
+  .preloader__content {
+    gap: 36px;
+  }
+}
+
+/* ---- Reduced motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  .preloader__particle {
+    animation: none;
+    opacity: 0.1;
+  }
+
+  .preloader__route-dot--active {
+    animation: none;
+  }
+
+  .preloader--revealed .preloader__curtain--left,
+  .preloader--revealed .preloader__curtain--right {
+    transition-duration: 0.01s;
+  }
+
+  @keyframes brandFadeIn {
+    from { opacity: 1; transform: none; }
+    to { opacity: 1; transform: none; }
+  }
+}
