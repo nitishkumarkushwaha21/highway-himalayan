@@ -2,10 +2,12 @@
 import { useRef, useEffect, useState } from "react";
 import { smoothstep, clamp } from "@/lib/animation";
 import { destinations } from "@/lib/destinations";
+import { useAudio } from "@/hooks/useAudio";
 
 export default function PackageCTA() {
   const sectionRef = useRef<HTMLElement>(null);
   const [scroll, setScroll] = useState(0);
+  const { click } = useAudio();
 
   useEffect(() => {
     const onScroll = () => {
@@ -28,6 +30,7 @@ export default function PackageCTA() {
       className="cta-section"
       aria-label="Trip package details"
     >
+      <div className="cta-section__bg" aria-hidden="true" />
       <div
         className="cta-section__content"
         style={{
@@ -49,13 +52,21 @@ export default function PackageCTA() {
         <div className="cta-section__route">
           {destinations.map((dest, i) => (
             <div key={dest.id} className="cta-section__stop">
-              <div
-                className="cta-section__stop-dot"
-                style={{ background: dest.color }}
+              <img
+                src={`/images/pin-${dest.id}.png`}
+                alt=""
+                className="cta-section__stop-pin"
+                width={40}
+                height={40}
               />
               <span className="cta-section__stop-name">{dest.title}</span>
               {i < destinations.length - 1 && (
-                <span className="cta-section__stop-line" />
+                <span
+                  className="cta-section__stop-line"
+                  style={{
+                    background: `linear-gradient(90deg, ${dest.color}88, ${destinations[i + 1].color}88)`,
+                  }}
+                />
               )}
             </div>
           ))}
@@ -84,7 +95,7 @@ export default function PackageCTA() {
             <span className="cta-section__amount">89,000</span>
             <span className="cta-section__per">/ person</span>
           </div>
-          <button className="cta-section__button">
+          <button className="cta-section__button" onClick={click}>
             Begin Your Journey
             <span className="cta-section__arrow">→</span>
           </button>

@@ -12,15 +12,16 @@ const DESTINATION_LABELS: Record<string, string> = {
 
 const ROUTE_DOTS = ["Shimla", "Manali", "Spiti", "Ladakh"];
 
-// Deterministic values — avoids SSR/client hydration mismatch from Math.random()
-const PRELOADER_PARTICLES = Array.from({ length: 20 }, (_, i) => ({
-  left: `${((i * 37 + 13) % 100).toFixed(2)}%`,
-  top: `${((i * 53 + 7) % 100).toFixed(2)}%`,
-  animationDelay: `${((i * 0.31) % 6).toFixed(2)}s`,
-  animationDuration: `${4 + (i % 4)}s`,
-  opacity: 0.15 + (i % 5) * 0.04,
-  width: `${2 + (i % 3)}px`,
-  height: `${2 + ((i + 1) % 3)}px`,
+// Deterministic values — avoids SSR/client hydration mismatch from Math.random().
+// Few and slow: a calm dust drift, not a particle storm.
+const PRELOADER_PARTICLES = Array.from({ length: 8 }, (_, i) => ({
+  left: `${((i * 61 + 13) % 100).toFixed(2)}%`,
+  top: `${((i * 47 + 7) % 100).toFixed(2)}%`,
+  animationDelay: `${((i * 0.9) % 8).toFixed(2)}s`,
+  animationDuration: `${9 + (i % 4) * 2}s`,
+  opacity: 0.1 + (i % 4) * 0.03,
+  width: `${2 + (i % 2)}px`,
+  height: `${2 + (i % 2)}px`,
 }));
 
 export default function Preloader() {

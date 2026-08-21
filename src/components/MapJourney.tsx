@@ -115,9 +115,9 @@ export default function MapJourney({
         <path
           d={routePath}
           fill="none"
-          stroke="rgba(245,234,214,0.15)"
-          strokeWidth="4"
-          strokeDasharray="12 8"
+          stroke="rgba(245,234,214,0.18)"
+          strokeWidth="9"
+          strokeDasharray="22 16"
           strokeLinecap="round"
         />
 
@@ -126,8 +126,8 @@ export default function MapJourney({
           ref={pathRef}
           d={routePath}
           fill="none"
-          stroke="rgba(245,234,214,0.7)"
-          strokeWidth="3"
+          stroke="rgba(245,234,214,0.75)"
+          strokeWidth="7"
           strokeLinecap="round"
           strokeDasharray={`${overallProgress * 3200} 3200`}
           filter="url(#routeGlow)"
@@ -144,38 +144,65 @@ export default function MapJourney({
             <g key={pin.label} className="map-journey__pin">
               {/* Pulse ring for active pin */}
               {isActive && (
-                <circle
-                  cx={pin.x}
-                  cy={pin.y}
-                  r="28"
-                  fill="none"
-                  stroke={dest.color}
-                  strokeWidth="2"
-                  opacity="0.6"
-                  className="map-journey__pulse"
-                />
+                <>
+                  <circle
+                    cx={pin.x}
+                    cy={pin.y}
+                    r="120"
+                    fill="none"
+                    stroke={dest.color}
+                    strokeWidth="4"
+                    opacity="0.5"
+                    className="map-journey__pulse"
+                  />
+                  <circle
+                    cx={pin.x}
+                    cy={pin.y}
+                    r="90"
+                    fill="none"
+                    stroke={dest.color}
+                    strokeWidth="3"
+                    opacity="0.7"
+                    className="map-journey__pulse"
+                  />
+                </>
               )}
+
+              {/* Soft halo behind pin */}
+              <circle
+                cx={pin.x}
+                cy={pin.y + 14}
+                r="62"
+                fill={dest.color}
+                opacity={isReached ? 0.25 : 0.08}
+                style={{ transition: "opacity 0.6s ease" }}
+              />
 
               {/* Pin icon */}
               <image
                 href={`/images/pin-${dest.id}.png`}
-                x={pin.x - 18}
-                y={pin.y - 18}
-                width="36"
-                height="36"
-                opacity={isReached ? 1 : 0.45}
+                x={pin.x - 80}
+                y={pin.y - 140}
+                width="160"
+                height="160"
+                opacity={isReached ? 1 : 0.55}
                 preserveAspectRatio="xMidYMid meet"
                 style={{ transition: "opacity 0.6s ease" }}
               />
 
               {/* Label */}
               <text
-                x={pin.x + 30}
-                y={pin.y + 6}
-                fill="rgba(245,234,214,0.8)"
-                fontSize="22"
+                x={pin.x + 96}
+                y={pin.y + 14}
+                fill="rgba(245,234,214,0.95)"
+                fontSize="56"
                 fontWeight="600"
                 fontFamily="var(--font-body)"
+                style={{
+                  paintOrder: "stroke",
+                  stroke: "rgba(26,23,20,0.8)",
+                  strokeWidth: 7,
+                }}
               >
                 {pin.label}
               </text>
@@ -190,10 +217,10 @@ export default function MapJourney({
         >
           <image
             href="/images/bus-side.png"
-            x="-20"
-            y="-14"
-            width="40"
-            height="28"
+            x="-70"
+            y="-48"
+            width="140"
+            height="96"
             preserveAspectRatio="xMidYMid meet"
           />
         </g>

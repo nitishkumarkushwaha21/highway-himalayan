@@ -22,6 +22,30 @@ const FPS = 24;
 const WIDTH = 1920;
 const VIDEOS = ["hero", "shimla", "manali", "spiti", "ladakh"];
 
+// Premium WebP quality knobs.
+//   QUALITY           88–92 keeps landscape detail without ballooning size.
+//   COMPRESSION_LEVEL 6  = maximum analysis effort (better quality per byte).
+//   SHARP_YUV         preserves colour edges (skies/ridge lines) under 4:2:0.
+// Pass FORCE=1 to re-extract even when frames already exist:
+//   FORCE=1 node extract-frames.js
+const QUALITY = 90;
+const COMPRESSION_LEVEL = 6;
+const FORCE = process.env.FORCE === "1";
+
+// Per-clip trim (seconds). AI drone clips often have a weak, blurry stretch
+// (usually a mid-clip turn). Set { start, duration } to extract only the
+// strong part of a clip — the frame count shrinks to duration*FPS, so update
+// frameCount in src/lib/destinations.ts to match after re-extracting.
+// Leave a clip out of this map (or set null) to extract the whole thing.
+// Example:  shimla: { start: 1.5, duration: 6 },
+const TRIM = {
+  // hero:   { start: 0,   duration: 8 },
+  // shimla: { start: 1.5, duration: 7 },
+  // manali: { start: 0,   duration: 8 },
+  // spiti:  { start: 1,   duration: 7 },
+  // ladakh: { start: 2,   duration: 7 },
+};
+
 function ensureDir(p) {
   if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
 }
@@ -34,10 +58,12 @@ function findVideo(name) {
   return null;
 }
 
+// ffprobe ships separately from ffmpeg-static; treat duration as best-effort
+// so extraction still runs when only ffmpeg is available.
 function getDuration(filePath) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     ffmpeg.ffprobe(filePath, (err, meta) => {
-      if (err) reject(err);
+      if (err || !meta) resolve(null);
       else resolve(meta.format.duration);
     });
   });
@@ -46,10 +72,11 @@ function getDuration(filePath) {
 function extract(inputPath, outputDir, name) {
   return new Promise(async (resolve, reject) => {
     const duration = await getDuration(inputPath);
-    const expected = Math.ceil(duration * FPS);
 
     console.log(`\n  🎬 ${name}`);
-    console.log(`     Duration: ${duration.toFixed(2)}s → ~${expected} frames`);
+    if (duration) {
+      console.log(`     Duration: ${duration.toFixed(2)}s → ~${Math.ceil(duration * FPS)} frames`);
+    }
     console.log(`     Output: ${outputDir}`);
 
     // Clear old frames if only 1 exists (failed previous run)
@@ -63,20 +90,27 @@ function extract(inputPath, outputDir, name) {
 
     ensureDir(outputDir);
 
-    // Use PNG first, then convert — most compatible approach
-    // Actually, let's just output as JPEG with high quality for max compatibility
-    // Then we'll use a second pass to convert to WebP if needed
-    
     const outputPattern = path.join(outputDir, "frame_%04d.webp");
     let lastPct = 0;
 
-    ffmpeg(inputPath)
-      .videoFilters(`fps=${FPS}`, `scale=${WIDTH}:-2`)
+    const trim = TRIM[name];
+    const command = ffmpeg(inputPath);
+    if (trim && typeof trim.start === "number") {
+      command.seekInput(trim.start);          // fast, keyframe-accurate seek
+      if (typeof trim.duration === "number") command.duration(trim.duration);
+      console.log(`     ✂️  Trim: ${trim.start}s for ${trim.duration ?? "rest"}s → ~${Math.ceil((trim.duration ?? 0) * FPS)} frames`);
+    }
+
+    // High-quality Lanczos downscale (if source is >1920) + premium WebP encode.
+    command
+      .videoFilters(`fps=${FPS}`, `scale=${WIDTH}:-2:flags=lanczos`)
       .outputOptions([
-        "-f", "image2",           // force image sequence output
-        "-c:v", "libwebp",        // explicitly set webp codec
-        "-qscale:v", "82",        // quality (0-100, higher = better)
-        "-an",                    // no audio
+        "-f", "image2",                      // force image sequence output
+        "-c:v", "libwebp",                   // explicitly set webp codec
+        "-quality", String(QUALITY),         // 0-100, higher = better
+        "-compression_level", String(COMPRESSION_LEVEL),
+        "-preset", "photo",                  // tuned for photographic content
+        "-an",                               // no audio
       ])
       .output(outputPattern)
       .on("progress", (p) => {
@@ -146,12 +180,16 @@ async function main() {
 
     const outDir = path.join(OUTPUT_DIR, name);
     
-    // Skip if already has many frames
+    // Skip if already extracted — unless FORCE=1 (re-extract at new quality).
     if (fs.existsSync(outDir)) {
       const existing = fs.readdirSync(outDir).filter(f => f.endsWith(".webp") || f.endsWith(".png"));
-      if (existing.length > 20) {
-        console.log(`\n  ⏭️  "${name}" already has ${existing.length} frames — skipping`);
+      if (existing.length > 20 && !FORCE) {
+        console.log(`\n  ⏭️  "${name}" already has ${existing.length} frames — skipping (FORCE=1 to re-extract)`);
         continue;
+      }
+      if (FORCE && existing.length > 0) {
+        console.log(`\n  ♻️  Clearing ${existing.length} existing frames for re-extract...`);
+        existing.forEach(f => fs.unlinkSync(path.join(outDir, f)));
       }
     }
 
