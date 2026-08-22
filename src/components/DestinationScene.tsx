@@ -3,8 +3,7 @@ import { useRef, useEffect, useState } from "react";
 import { useParallax } from "@/hooks/useParallax";
 import { useFramePlayer } from "@/hooks/useFramePlayer";
 import { useMotionSettings } from "@/hooks/useMotionSettings";
-import { clamp, smoothstep, holdMap } from "@/lib/animation";
-import DecorativeFrame from "@/components/DecorativeFrame";
+import { clamp, smoothstep } from "@/lib/animation";
 import type { Destination } from "@/lib/destinations";
 
 interface DestinationSceneProps {
@@ -35,10 +34,9 @@ export default function DestinationScene({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Reveal to the clip's sharpest "arrival" frame, hold there through the
-  // reading beat (blurry middle frames only flash past during motion), then
-  // finish the fly-through on exit.
-  const frameProgress = holdMap(scroll, destination.holdFrac, 380, 1080, 1460);
+  // Continuous, smooth scrub across the scene — eased at both ends so it
+  // lingers on the opening and closing frames without ever freezing.
+  const frameProgress = smoothstep(0, 1300, scroll);
   const { canvasRef } = useFramePlayer({
     framePath: destination.framePath,
     frameCount: destination.frameCount,
@@ -189,7 +187,6 @@ export default function DestinationScene({
           ))}
         </div>
 
-        <DecorativeFrame color={destination.color} />
       </div>
     </section>
   );
