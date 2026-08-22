@@ -3,6 +3,7 @@ import { useRef, useEffect, useState } from "react";
 import { useParallax } from "@/hooks/useParallax";
 import { useFramePlayer } from "@/hooks/useFramePlayer";
 import { useMotionSettings } from "@/hooks/useMotionSettings";
+import DecorativeFrame from "@/components/DecorativeFrame";
 import { smoothstep, clamp } from "@/lib/animation";
 
 const HERO_FRAME_COUNT = 240;
@@ -124,6 +125,7 @@ export default function Hero() {
         </div>
 
         <div className="hero__bottom-fade" />
+        <DecorativeFrame />
       </div>
     </section>
   );
