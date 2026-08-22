@@ -4,6 +4,7 @@ import { useParallax } from "@/hooks/useParallax";
 import { useFramePlayer } from "@/hooks/useFramePlayer";
 import { useMotionSettings } from "@/hooks/useMotionSettings";
 import { clamp, smoothstep, holdMap } from "@/lib/animation";
+import DecorativeFrame from "@/components/DecorativeFrame";
 import type { Destination } from "@/lib/destinations";
 
 interface DestinationSceneProps {
@@ -188,12 +189,7 @@ export default function DestinationScene({
           ))}
         </div>
 
-        <div className="dest-scene__index" style={{ color: destination.color }}>
-          <span className="dest-scene__index-num">
-            {String(index + 1).padStart(2, "0")}
-          </span>
-          <span className="dest-scene__index-total">/ 04</span>
-        </div>
+        <DecorativeFrame color={destination.color} />
       </div>
     </section>
   );

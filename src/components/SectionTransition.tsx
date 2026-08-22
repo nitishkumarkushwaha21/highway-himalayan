@@ -26,7 +26,12 @@ export default function SectionTransition({
       const el = ref.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      setScroll(clamp(-rect.top / (el.offsetHeight - window.innerHeight)));
+      const vh = window.innerHeight;
+      // 0 when the section's centre sits at the bottom of the viewport,
+      // 1 when it reaches the top — robust for sections shorter than the
+      // viewport (the old metric divided by a negative number).
+      const center = rect.top + rect.height / 2;
+      setScroll(clamp(1 - center / vh));
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
@@ -53,7 +58,7 @@ export default function SectionTransition({
     <div
       ref={ref}
       className="section-transition"
-      style={{ height: "42vh" }}
+      style={{ height: "26vh" }}
     >
       <div className="section-transition__stage">
         {/* Top gradient from previous section */}
